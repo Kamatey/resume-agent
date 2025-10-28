@@ -1,0 +1,10 @@
+agno 
+openai
+sqlalchemy
+psycopg2-binary
+pgvector
+chromadb
+pypdf
+fastapi
+uvicorn
+python-multipart
