@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  resume-agent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resume-agent-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    env_file:
+      - .env
+    volumes:
+      # Mount the app directory for development (optional - comment out for production)
+      - ./:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - resume-agent-network
+
+networks:
+  resume-agent-network:
+    driver: bridge
