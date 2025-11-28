@@ -1,0 +1,39 @@
+name: Debug Server
+
+on:
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cat >>~/.ssh/config <<END
+          Host ec2-server
+            HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+          END
+
+      - name: Check Server Status
+        run: |
+          ssh ec2-server << 'EOF'
+            echo "=== Docker Containers ==="
+            sudo docker ps -a
+            
+            echo -e "\n=== Container Logs ==="
+            # Assuming the container name from docker-compose is 'resume-agent-api'
+            # Adjust if your container name is different (check docker ps output)
+            sudo docker logs resume-agent-api --tail 50
+            
+            echo -e "\n=== Network Ports ==="
+            sudo netstat -tuln || echo "netstat not found, trying ss" && sudo ss -tuln
+            
+            echo -e "\n=== Local Connectivity Check ==="
+            curl -v http://localhost:8000/health || echo "Local curl failed"
+          EOF

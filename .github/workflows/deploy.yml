@@ -73,18 +73,39 @@ jobs:
       - name: Deploy Application
         run: |
           ssh ec2-server << 'EOF'
+            set -e # Exit immediately if a command exits with a non-zero status
+            
+            # Ensure directory exists
+            mkdir -p ~/app
             cd ~/app
+            
+            # Debug: List files to ensure transfer worked
+            echo "Listing files in ~/app:"
+            ls -la
             
             # Create .env file from secrets
             echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" > .env
             
-            # Stop and remove existing containers, networks, and volumes
-            # We use '|| true' to prevent failure if containers don't exist yet
-            docker-compose down || true
+            # Stop existing containers
+            # Try 'docker compose' (plugin) first, fall back to 'docker-compose'
+            if command -v docker-compose &> /dev/null; then
+              COMPOSE_CMD="docker-compose"
+            else
+              COMPOSE_CMD="docker compose"
+            fi
             
-            # Build and start the application
-            docker-compose up -d --build --force-recreate
+            echo "Using compose command: $COMPOSE_CMD"
             
-            # Prune unused images to save space
+            $COMPOSE_CMD down || true
+            
+            # Build and start
+            echo "Building and starting containers..."
+            $COMPOSE_CMD up -d --build --force-recreate
+            
+            # Verify they are running
+            echo "Verifying running containers..."
+            docker ps
+            
+            # Prune unused images
             docker image prune -f
           EOF
