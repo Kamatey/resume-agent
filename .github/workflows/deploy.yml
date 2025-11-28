@@ -32,29 +32,28 @@ jobs:
             sudo apt-get update -y
             sudo apt-get install -y ca-certificates curl gnupg lsb-release
 
-            # Install Docker if not exists
-            if ! command -v docker &> /dev/null; then
-              echo "Installing Docker..."
-              sudo mkdir -p /etc/apt/keyrings
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-              echo \
-                "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-                $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-              sudo apt-get update -y
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            # Always try to install/upgrade Docker to the latest version
+            echo "Installing/Upgrading Docker..."
+            sudo mkdir -p /etc/apt/keyrings
+            # Remove old gpg key if it exists to avoid conflicts
+            sudo rm -f /etc/apt/keyrings/docker.gpg
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            
+            echo \
+              "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+              $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
               
-              # Add user to docker group
-              sudo usermod -aG docker $USER
-              echo "Docker installed. You might need to reconnect for group changes to take effect."
-            else
-              echo "Docker is already installed."
-            fi
-
-            # Install Docker Compose (standalone) if not exists (optional, as plugin is installed above, but good for compatibility)
-            if ! command -v docker-compose &> /dev/null; then
-               echo "Installing Docker Compose..."
-               sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-               sudo chmod +x /usr/local/bin/docker-compose
+            sudo apt-get update -y
+            # Force upgrade of docker packages
+            sudo apt-get install -y --only-upgrade docker-ce docker-ce-cli containerd.io docker-compose-plugin || sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            
+            # Add user to docker group
+            sudo usermod -aG docker $USER
+            
+            # Remove standalone docker-compose to force usage of the plugin if it's outdated
+            if [ -f /usr/local/bin/docker-compose ]; then
+                echo "Removing potentially outdated standalone docker-compose..."
+                sudo rm /usr/local/bin/docker-compose
             fi
           EOF
 
